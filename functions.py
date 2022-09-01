@@ -210,8 +210,9 @@ def ccm_unred(wave, flux, a_v=None, ebv=None, r_v=3.1):
     good = numpy.where( (x >=3.3) & (x < 8))
     if len(good[0]) > 0:        
         y = x[good]
-        f_a = numpy.zeros([len(good[0])], dtype=numpy.float)    # f_b = numpy.zeros([ngood], dtype=float32)
-        good1 = numpy.where(ravel((y > 5.9)))[0]
+        f_a = numpy.zeros([len(good[0])], dtype=numpy.float)
+        f_b = numpy.zeros([good], dtype=numpy.float)
+        good1 = numpy.where(np.ravel((y > 5.9)))[0]
         if len(good1[0]) > 0:    
             y1 = y[good1] - 5.9
             f_a[good1] = -0.04473 * y1 ** 2 - 0.009779 * y1 ** 3
@@ -347,8 +348,7 @@ def binfit(bins, x, y, order):
     bins = bins[0:-1][real]
     bin_val = np.asarray(bin_val)[real]
     bin_std = np.asarray(bin_std)[real]
-#    function = np.poly1d(np.polyfit(bins, bin_val, order))
-    function = [0]
+    function = np.poly1d(np.polyfit(bins, bin_val, order))
     return bins, bin_val, bin_std, function
 
 def reject_outliers(data, m = 3., index=False):
@@ -364,14 +364,7 @@ def reject_outliers(data, m = 3., index=False):
 def SFR_K98(ha, hb, z, dha=None, dhb=None):
     c = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.27)
     d = c.luminosity_distance(z).value * 10**6 * 3.086*10**16# *100
-    #kpc_arcsec = []
-    #for i in range(len(z)):
-    #    kpc_arcsec.append(cosmo(z[i]))
-    #kpc_arcsec = np.asarray(kpc_arcsec)
-    #ha = ccm_unred([6565.]*len(ha), ha, ebv = EBV(ha, hb))
-    #ha_lum = ha * (1.0 * kpc_arcsec *3.086**21)**2 / 10**-17
     ha_lum = ha * 4*np.pi * d**2 * 10**-7
-    #sfr = log10(ha_lum / (1.26 * 10**41))
     sfr = log10(ha_lum / (10**41.1))
     if dha is not None and dhb is not None:
         dsfr = sfr
@@ -440,9 +433,6 @@ def stack(x, z=False, zbin=False, error='std', trim=None):
             mix = (z >= zlow[i])&(z < zhig[i])
             xx = x[mix]
             
-            # Remove rows of all NaN
-            #xx = xx[~(np.isnan(xx).all(axis=1))]
-            
             for j in range(len(x[0])):
                 if len(xx) > 1:
                     xr = xx[:, j]
@@ -453,22 +443,7 @@ def stack(x, z=False, zbin=False, error='std', trim=None):
                             err[i,j] = astat.biweight_scale(xr[~np.isnan(xr)&np.isfinite(xr)], c=6)
                         elif error=='sem':
                             err[i,j] = astat.biweight_scale(xr[~np.isnan(xr)&np.isfinite(xr)], c=6)/np.sqrt(len(xr))
-            
-            # Cutoff the profile once a radius bin becomes NaN. Pass over first 
-            # bins where val is NaN.
-            """
-            start = 0
-            end = 0
-            for j in range(len(val[i])):
-                if np.isnan(val[i,j]) and start == 1 and end == 0:
-                    end += 1
-                if ~np.isnan(val[i,j]) and start == 0:
-                    start += 1
-                
-                if start == 1 and end == 1:
-                    val[i,j] = np.nan
-                    err[i,j] = np.nan
-            """
+
             # remove any single points
             for j in range(len(val[i])-2):
                 j+=1
@@ -508,17 +483,13 @@ def azimuth_profiles(x, y, xbins):
     for j in range(len(xbins)-1):
         ix = (x >= xbins[j])&(x < xbins[j+1])
         if len( y[ix] ) > 0:
-            #print y[ix]
             bin_val.append(np.nanmedian(y[ix]))
             bin_std.append(np.nanstd(y[ix]))
             n.append(len(y[ix]))
         else:
-            #print [np.nan]
             bin_val.append(np.nan)
             bin_std.append(np.nan)
             n.append(0)
-            
-        #print bin_val
     return np.asarray(bin_val), np.asarray(bin_std), np.asarray(n)
     
 def binormial_er(a, b, cl='cl'):

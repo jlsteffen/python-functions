@@ -53,8 +53,6 @@ def style(ax, fontsize, labeltop=False, labelbottom=True, labelleft=True, labelr
             ax.yaxis.label.set_color(c)
             ax.tick_params(which='both', colors=c)
             
-        
-
 def ticks(ax, xmajor, ymajor, xminor=None, yminor=None):
     '''
     Set major and minor tick spacing. The minor tick spacing is optional.
@@ -163,9 +161,9 @@ def gaussian_den(x, y):
     z = z/z.max() 
     return z
 
-def legend(axs, fontsize=False):
+def legend(axs, fontsize=False, loc='best'):
     if fontsize==False:
         leg = axs.legend(fancybox=False, edgecolor='k')
     else:
-        leg = axs.legend(fontsize=fontsize/2, fancybox=False, edgecolor='k')
+        leg = axs.legend(fontsize=fontsize/2, fancybox=False, edgecolor='k', loc=loc)
     leg.get_frame().set_linewidth(2.0)
