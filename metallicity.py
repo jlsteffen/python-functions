@@ -1,21 +1,13 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Created on Wed Jul 31 15:08:46 2019
 
-@author: joshua
+@author: Joshua Steffen
 """
-
 import numpy as np
 from functions import ccm_unred, EBV, divide, log10
 
 """Line Ratios"""
-
 def R23(OII_3727, OIII_5007, Hb, OIII_4959=None):
-    '''
-    if OIII_4959 is None:
-        OIII_4959 = 0.35 * OIII_5007
-    '''
     O = OII_3727 + OIII_5007
     return divide(O, Hb)
 def N2Ha(NII_6584, Ha):
@@ -41,7 +33,9 @@ def O2Hb(OII_3727, Hb):
 
 """Metallicity Calibrators"""
 def T04(o2, o3, hb, ha=None, do2=None, do3=None, dhb=None):
-    # R23 with the Tremonti et al. 2004 calibration
+    '''
+    R23 with the Tremonti et al. 2004 calibration
+    '''
     if ha is not None:
         ebv = EBV(ha, hb)
         o2 = ccm_unred([3730.]*len(o2), o2, ebv = ebv)
@@ -57,19 +51,14 @@ def T04(o2, o3, hb, ha=None, do2=None, do3=None, dhb=None):
             dhb = ccm_unred([4863.]*len(dhb), dhb*hb, ebv = ebv)
         dR23 = np.sqrt(np.abs(divide(do2,(o2*np.log(10))))**2 + np.abs(divide(do3,(o3*np.log(10))))**2 +\
                        np.abs(divide(dhb,(hb*np.log(10))))**2)
-        
-        #re1 = divide(np.sqrt(2**2 * do2**2 + 1.35**2 * do3**2), (2*o2 + 1.35*o3))
-        #re2 = divide(dhb, hb)
-        #re = np.sqrt(re1**2 + re2**2) * abs(r)
-        #R23e = divide(re, np.log(10)*r)
         doh = 0.313*dR23 + 2*0.264*R23*dR23 + 3*0.321*R23**2 * dR23
     else:
         doh = np.zeros_like(oh)
     return oh, doh
 def O3N2M13(o3, n2, ha, hb, do3=None, dn2=None, dha=None, dhb=None):
-    # O3N2 with the Marino et al. 2013 calibration
-    #o3 = o3 * 1.35 # correct for doublet
-    
+    '''
+    O3N2 with the Marino et al. 2013 calibration    
+    '''
     ebv = EBV(ha, hb)
     o3 = ccm_unred([5008.]*len(o3), o3, ebv = ebv)
     n2 = ccm_unred([6585.]*len(n2), n2, ebv = ebv)
@@ -92,7 +81,9 @@ def O3N2M13(o3, n2, ha, hb, do3=None, dn2=None, dha=None, dhb=None):
         doh = np.zeros_like(oh)
     return oh, doh
 def N2M13(n2, ha, hb=None, dn2=None, dha=None):
-    # N2 with the Marino et al. 2013 calibraiton
+    '''
+    N2 with the Marino et al. 2013 calibraiton
+    '''
     if hb is not None:
         ebv = EBV(ha, hb)
         n2 = ccm_unred([6585.]*len(n2), n2, ebv = ebv)
@@ -123,7 +114,6 @@ def PP04(o3, n2, ha, hb, do3=None, dn2=None, dha=None, dhb=None):
     o3n2 = log10(divide(o3, hb) * divide(ha, n2))
     
     oh = 8.73 - 0.32*o3n2
-    #oh = oh * (o3n2 < 2.0) + 0 * (o3n2 >= 2.0)
     oh[o3n2>=2.0] = np.nan
     
     if do3 is not None and dn2 is not None and dha is not None and dhb is not None:
@@ -141,7 +131,9 @@ def PP04(o3, n2, ha, hb, do3=None, dn2=None, dha=None, dhb=None):
     return oh, doh
 
 def ionization(oh, y):
-    # Tables from Kewley and Dopita 2002
+    '''
+    Tables from Kewley and Dopita 2002
+    '''
     k = np.array([[7.39167, 7.46218, 7.57817, 7.73013], 
                   [0.667891, 0.685835, 0.739315, 0.843125], 
                   [0.0680367, 0.0866086, 0.0843640, 0.118166]])
@@ -242,7 +234,6 @@ def KD02(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=None
 
             if ohmid >= 8.5:
                 oh[i] = ohmid
-                print ohmid
             else:
                 # Lower Branch, O/H < 8.5
                 C01 = log10(5.09*10**-4 * (divide(o2[i], o3[i])/1.5)**0.17 * (divide(n2[i], s2[i])/0.85)**1.17) + 12
@@ -259,16 +250,11 @@ def KD02(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=None
                 oh[i] = ohlow
 
     oh = np.asarray(oh)
-    #oh = ohmid
-    #print ohlow[~np.isnan(ohlow)]
-    '''
-    NEED to update the error propagation
-    '''
+
     if do2 is not None and dn2 is not None:
         dn2 = ccm_unred([6585.]*len(n2), dn2*n2, ebv = ebv)
         do2 = ccm_unred([3730.]*len(o2), do2*o2, ebv = ebv)
         do3 = ccm_unred([5008.]*len(o3), do3*o3, ebv = ebv)
-        ds2 = np.sqrt(ccm_unred([6733.]*len(ha), ds2_6733*s2_6733, ebv = ebv)**2 + ccm_unred([6718.]*len(ha), ds2_6718*s2_6718, ebv = ebv)**2)
         
         dn2o2 = np.sqrt(divide(do2,(o2*np.log(10)))**2 + divide(dn2,(n2*np.log(10)))**2)
         dy = np.sqrt(1.26602**2 * dn2o2**2 + ((2.0*0.167977*n2o2)**2*dn2o2**2))
@@ -281,7 +267,6 @@ def KD02KE08(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=
     '''
     KD02 as updated in Kewley & Ellison 2008.
     '''
-    
     # Deredden the emission lines if have ha and hb
     if ha is not None and hb is not None:
         ebv = EBV(ha, hb)
@@ -289,9 +274,6 @@ def KD02KE08(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=
         n2 = ccm_unred([6585.]*len(n2), n2, ebv=ebv)
         o3 = ccm_unred([5008.]*len(o3), o3, ebv = ebv)
         hb = ccm_unred([4863.]*len(hb), hb, ebv = ebv)
-        s2 = ccm_unred([6733.]*len(s2_6733), s2_6733, ebv = ebv) + ccm_unred([6718.]*len(s2_6718), s2_6718, ebv = ebv)
-    else:
-        s2 = s2_6718 + s2_6733
 
     oh = np.zeros(o2.size)
     
@@ -304,12 +286,11 @@ def KD02KE08(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=
             '''
             solve the roots of log(N2/O2) = 1106.8660 - 532.15451 Z + 96.373260 Z^2 - 7.8106123 Z^3 + 0.23928247 Z^4
             '''
-            #coeffs = [1106.8660 - n2o2, -532.15451, 96.373260, -7.8106123, 0.23928247]
             coeffs = np.array([0.23928247, -7.8106123, 96.373260, -532.15451, 1106.8660 - n2o2])
             root = np.roots(coeffs)
             oh[i] = root[~np.iscomplex(root)].real.max()
             if oh[i] <=8.4:
-                print 'error'
+                print('error')
                 break
             
         else:
@@ -325,9 +306,7 @@ def KD02KE08(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=
             logq = (32.81 - 1.153 * y**2 + logoh*(-3.396-0.025*y+0.1444*y**2))*(4.603-0.3119*y-0.163*y**2+logoh*(-0.48+0.0271*y+0.02037*y**2))**-1
             
             KK04 = 9.40 + 4.65*R23 - 3.17*R23**2 - logq*(0.272 + 0.547*R23-0.513*R23**2)
-            
-            #KK04 = 9.72 -0.777*R23 - 0.951*R23**2 -0.072*R23**3 -0.811*R23**4 -logq*(0.0737-0.0713*R23-0.141*R23**2 +0.0373*R23**3 -0.058*R23**4)
-            
+                        
             # now use the use KK04 to solve for logq and iterate the logq and
             # KK04 unitl the solution converges
             
@@ -337,99 +316,20 @@ def KD02KE08(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=
                 logoh = KK04
                 logq = (32.81 - 1.153 * y**2 + logoh*(-3.396-0.025*y+0.1444*y**2))*(4.603-0.3119*y-0.163*y**2+logoh*(-0.48+0.0271*y+0.02037*y**2))**-1
                 KK04 = 9.40 + 4.65*R23 - 3.17*R23**2 - logq*(0.272 + 0.547*R23-0.513*R23**2)
-                #KK04 = 9.72 -0.777*R23 - 0.951*R23**2 -0.072*R23**3 -0.811*R23**4 -logq*(0.0737-0.0713*R23-0.141*R23**2 +0.0373*R23**3 -0.058*R23**4)
                 itera.append(KK04)
                 error += 1
                 if error > 100:
                     total_errors += 1
                     
                     KK04 = np.nan
-                    #print i
                     break
-                #print abs(abs(KK04-logoh)/KK04) 
             if len(itera) > 100:
                 break
             oh[i] = np.mean((M91, KK04), axis=0)
-            #update_progress((i+1.0)/np.float64(len(o2)))
-    #print str(total_errors) + ' iteration failures'
     oh = np.asarray(oh)
-    #oh = ohmid
-    #print ohlow[~np.isnan(ohlow)]
-    '''
-    NEED to update the error propagation
-    '''
-    '''
-    if do2 is not None and dn2 is not None:
-        dn2 = ccm_unred([6585.]*len(n2), dn2*n2, ebv = ebv)
-        do2 = ccm_unred([3730.]*len(o2), do2*o2, ebv = ebv)
-        do3 = ccm_unred([5008.]*len(o3), do3*o3, ebv = ebv)
-        ds2 = np.sqrt(ccm_unred([6733.]*len(ha), ds2_6733*s2_6733, ebv = ebv)**2 + ccm_unred([6718.]*len(ha), ds2_6718*s2_6718, ebv = ebv)**2)
-        
-        dn2o2 = np.sqrt(divide(do2,(o2*np.log(10)))**2 + divide(dn2,(n2*np.log(10)))**2)
-        dy = np.sqrt(1.26602**2 * dn2o2**2 + ((2.0*0.167977*n2o2)**2*dn2o2**2))
-        doh = np.abs(divide(dy, y*np.log(10)))
-    else:
-        doh = np.zeros_like(oh)
-    '''
+
     doh = np.zeros_like(oh)
-    return oh, doh#, itera
-
-def test(o2, o3, n2, s2_6718, s2_6733, hb, ha=None, do2=None, do3=None, dn2=None, ds2_6718=None, ds2_6733=None):
-    '''
-    KD02 as updated in Kewley & Ellison 2008.
-    '''
-    
-    # Deredden the emission lines if have ha and hb
-    if ha is not None and hb is not None:
-        ebv = EBV(ha, hb)
-        o2 = ccm_unred([3730.]*len(o2), o2, ebv=ebv)
-        n2 = ccm_unred([6585.]*len(n2), n2, ebv=ebv)
-        o3 = ccm_unred([5008.]*len(o3), o3, ebv = ebv)
-        hb = ccm_unred([4863.]*len(hb), hb, ebv = ebv)
-        s2 = ccm_unred([6733.]*len(s2_6733), s2_6733, ebv = ebv) + ccm_unred([6718.]*len(s2_6718), s2_6718, ebv = ebv)
-    else:
-        s2 = s2_6718 + s2_6733
-
-    oh = np.zeros(o2.size)
-    n = np.zeros(o2.size)
-    for i in range(len(o2)):
-        # Upper Branch, O/H > 8.6
-        n2o2 = log10(divide(n2[i], 2*o2[i]))  # uses [OII]lamlam 3726, 3729
-        n[i] = n2o2
-        '''
-        solve the roots of log(N2/O2) = 1106.8660 - 532.15451 Z + 96.373260 Z^2 - 7.8106123 Z^3 + 0.23928247 Z^4
-        '''
-        coeffs = [1106.8660 - n2o2, -532.15451, 96.373260, -7.8106123, 0.23928247]
-        coeffs = np.array([0.23928247, -7.8106123, 96.373260, -532.15451, 1106.8660 - n2o2])
-        root = np.roots(coeffs)
-            
-        if any(~np.iscomplex(root)):
-            
-            oh[i] = root[~np.iscomplex(root)].real.min()
-            
-            
-        else:
-            oh[i] = np.nan
-
-
-    oh = np.asarray(oh)
-    #oh = ohmid
-    #print ohlow[~np.isnan(ohlow)]
-    '''
-    NEED to update the error propagation
-    '''
-    if do2 is not None and dn2 is not None:
-        dn2 = ccm_unred([6585.]*len(n2), dn2*n2, ebv = ebv)
-        do2 = ccm_unred([3730.]*len(o2), do2*o2, ebv = ebv)
-        do3 = ccm_unred([5008.]*len(o3), do3*o3, ebv = ebv)
-        ds2 = np.sqrt(ccm_unred([6733.]*len(ha), ds2_6733*s2_6733, ebv = ebv)**2 + ccm_unred([6718.]*len(ha), ds2_6718*s2_6718, ebv = ebv)**2)
-        
-        dn2o2 = np.sqrt(divide(do2,(o2*np.log(10)))**2 + divide(dn2,(n2*np.log(10)))**2)
-        dy = np.sqrt(1.26602**2 * dn2o2**2 + ((2.0*0.167977*n2o2)**2*dn2o2**2))
-        doh = np.abs(divide(dy, y*np.log(10)))
-    else:
-        doh = np.zeros_like(oh)
-    return oh, n
+    return oh, doh
 
 def DOP16(n2, s2_6718, s2_6733, ha, hb=None, dn2=None, ds2_6718=None, ds2_6733=None, dha=None, dhb=None):    
     # N2S2 from Dopita et al. 2016
@@ -459,15 +359,13 @@ def DOP16(n2, s2_6718, s2_6733, ha, hb=None, dn2=None, ds2_6718=None, ds2_6733=N
     else:
         doh = np.zeros_like(oh)
     return oh, doh
-'''
-# Issue with ONS where there is a large gap in probed metallicities
-def ONS(obj):
-    # From Pilyugin et al. 2010
-    o2 = pars['OII3730'][:,obj]
-    o3 = pars['OIII5008'][:,obj]
-    n2 = pars['NII6585'][:,obj]
-    s2 = pars['SII6733'][:,obj] + pars['SII6718'][:,obj]
-    hb = pars['Hb4863'][:,obj]
+ 
+def ONS(o2, o3, n2, s2, hb):
+    '''
+    From Pilyugin et al. 2010
+    
+    NOTE: Issue with ONS where there is a large gap in probed metallicities
+    '''
     R2 = np.divide(2*o2, hb, out=np.zeros(o2.shape), where=hb!=0)
     N2 = np.divide(1.34*n2, hb, out=np.zeros(n2.shape), where=hb!=0)
     S2 = np.divide(s2, hb, out=np.zeros(s2.shape), where=hb!=0)
@@ -489,13 +387,12 @@ def ONS(obj):
             oh.append(np.nan)
     oh = np.asarray(oh)
     return oh
-'''
+
 
 def poly_N06(logR, a):
     '''
     Find the roots of polynomials for Nagao et al. 2006
     '''
-    
     roots = np.roots([a[3], a[2], a[1], a[0] - logR])
     # range of Nagao is 12+log(O/H) = 7 - 9.5
     if any(~np.iscomplex(roots)&(roots>=7.05)&(roots <= 9.25)):
@@ -515,7 +412,6 @@ def N06(ratio, OII_3727=None, OIII_5007=None, NII_6584=None,
     Line ratios available: R23, N2Ha, O3N2, N2O2, N2S2, O3O2, Ne3O2, Ha+N2/S2, 
     O3Hb, or O2Hb
     '''
-    
     lines = [OII_3727, OIII_5007, NII_6584, SII_6720, NeIII_3869, Ha, Hb]
     wave = [3730, 5008, 6585, 6720, 3870, 6565, 4863]
     
@@ -574,7 +470,6 @@ def poly_M08(logR, a):
     '''
     Find the roots of polynomials 
     '''
-    
     roots = np.roots([a[4], a[3], a[2], a[1], a[0] - logR])
     # range of M08 is 12+log(O/H) = 7 - 9.5
     if any(~np.iscomplex(roots)):
@@ -588,9 +483,6 @@ def M08(ratio, OII_3727=None, OIII_5007=None, NII_6584=None,
     Line ratios available: R23, N2Ha, O3N2, O3O2, Ne3O2, 
     O3Hb, or O2Hb
     '''
-    lines = [OII_3727, OIII_5007, NII_6584, NeIII_3869, Ha, Hb]
-    wave = [3730, 5008, 6585, 3870, 6565, 4863]
-    
     # polynomial coefficients from Tables 6 and 10 from Maiolino et al. 2008   
     coeffs = {"R23":[0.7462, -0.7149, -0.9401, -0.6154, -0.2524], 
               "N2Ha":[-0.7732, 1.2357, -0.2811, -0.7201, -0.3330],
@@ -600,14 +492,6 @@ def M08(ratio, OII_3727=None, OIII_5007=None, NII_6584=None,
               "O3N2":[0.4520, -2.6096, -0.7170, 0.1347, 0],
               "Ne3O2":[-1.2608, -1.0861, -0.1470, 0, 0]
               }
-    '''
-    # perform de-reddening for lines 
-    if unred == True and Ha is not None and Hb is not None:
-        ebv = EBV(Ha, Hb)
-        for i in range(len(lines)):
-            if lines[i] is not None:
-                lines[i] = ccm_unred([wave[i]]*len(lines[i]), lines[i], ebv=ebv)
-    '''
     
     ebv = EBV(Ha, Hb)
     
@@ -633,9 +517,7 @@ def M08(ratio, OII_3727=None, OIII_5007=None, NII_6584=None,
         R = log10(R23(OII_3727, OIII_5007, Hb))
         for i in range(len(R)):
             # Use the NII/Ha ratio to break the double valued R23
-            # log(NII/Ha) = -1.39 at 12 + log(O/H) = 8.08
-            #if OIII_5007[i]/OII_3727[i] <= 2:
-            
+            # log(NII/Ha) = -1.39 at 12 + log(O/H) = 8.08            
             if log10(divide(NII_6584[i], Ha[i])) > -1.39:
                 Z = poly_M08(R[i], coeffs[ratio]).max() + 8.69
             else:
@@ -644,21 +526,7 @@ def M08(ratio, OII_3727=None, OIII_5007=None, NII_6584=None,
             if Z > 9.5 or Z < 7:
                 oh.append(np.nan)
             else:
-                oh.append(Z)
-    '''   
-    elif ratio =='N2Ha':
-        rootap(ratio, N2Ha(NII_6584, Ha), oh, coeffs)
-    elif ratio=='O3N2':
-        rootap(ratio, O3N2(OIII_5007, NII_6584), oh, coeffs)
-    elif ratio=='O3O2':
-        rootap(ratio, O3O2(OIII_5007, OII_3727), oh, coeffs)
-    elif ratio=='Ne3O2':
-        rootap(ratio, Ne3O2(NeIII_3869, OII_3727), oh, coeffs)
-    elif ratio=='O3Hb':
-        rootap(ratio, O3Hb(OIII_5007, Hb), oh, coeffs)
-    elif ratio=='O2Hb':
-        rootap(ratio, O2Hb(OII_3727, Hb), oh, coeffs)
-    '''     
+                oh.append(Z) 
     return np.asarray(oh), np.asarray(oh)
 
 def NO(NII_6548, NII_6584, OIII_5007, OIII_4959, OII_3727, Hb):
